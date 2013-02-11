@@ -15,7 +15,8 @@ LXC_RUNNER_TAG = 'lxc'
 
 
 def system(cmd, *args):
-    p = subprocess.Popen(('%s ' % cmd) + ' '.join(args), shell=True)
+    p = subprocess.Popen(('%s ' % cmd) + ' '.join(args),
+                         shell=True, stdout=subprocess.PIPE)
     out, err = p.communicate()
     return out, err, p.returncode
 
@@ -27,8 +28,8 @@ def lxc_command(cmd, *args):
 container_rc_local_template = '''#!/bin/sh
 %(exports)s
 cd %(work_dir)s
-/usr/local/bin/lettuce -s %(scenario)s %(feature_path)s > /%(results_path)s
-exit 0
+/usr/local/bin/lettuce -s %(scenario)s %(feature_path)s > %(results_path)s
+halt
 '''
 
 
@@ -37,13 +38,13 @@ class LXCRunner(object):
     Encapsulates scenario run in LXC container.
     Performs container setup, scenario run and result displaying
     """
+
     containers_path = '/var/lib/lxc/'
-    default_container_name = os.environ.get('LETTUCE_LXC_DEFAULT', None) or \
-        'default'
-    env_file_inner_path = 'root/env.dump'
-    world_file_inner_path = 'root/world.dump'
-    run_results_inner_path = 'root/run_results'
-    run_results_search_regex = r'Scenario.*\n\n'
+    default_container_name = os.environ.get('LETTUCE_LXC_DEFAULT', 'default')
+    world_file_inner_path = '/root/world.dump'
+    run_results_inner_path = '/root/run_results'
+    run_results_str_regex = r'Scenario.*\n\n'
+    run_results_stats_regex = r'step(|s) \(.*\)'
 
     def get_free_container_name(self, prefix):
         """
@@ -74,7 +75,9 @@ class LXCRunner(object):
                             self.container_name,
                             'rootfs')
 
-    def inner_path_to_global(self, path):
+    def lxc_abs_path(self, path):
+        if path.startswith('/'):
+            path = path[1:]
         return os.path.join(self.container_rootfs, path)
 
     @property
@@ -85,15 +88,14 @@ class LXCRunner(object):
     def run_scenario(self, scenario):
         self.scenario = scenario
         self.setup_container()
-        # env_path = self.inner_path_to_global(self.env_file_inner_path)
-        # self.save_env(env_path)
-        world_path = self.inner_path_to_global(self.world_file_inner_path)
+        world_path = self.lxc_abs_path(self.world_file_inner_path)
         self.save_world(world_path)
         self.run_container()
         self.wait_container()
         results = self.get_run_results()
         self.shutdown_container()
-        self.display_results(results)
+        self.display_results(results[0])
+        return results[1]
 
     def create_container(self):
         self.container_name = self.get_free_container_name(self.default_container_name)
@@ -103,19 +105,15 @@ class LXCRunner(object):
     def setup_container(self):
         self.create_container()
 
-        # actual setup
         system('cp', '-rf',
                '/vagrant',
-               self.inner_path_to_global('root/vagrant'))
-        working_dir = os.path.abspath('.')
-        container_working_dir = working_dir.replace('/vagrant',
-                                                    '/root/vagrant')
-
-        feature_path = sys.argv[1].replace('/vagrant', '/root/vagrant')
+               self.lxc_abs_path('/vagrant'))
+        container_working_dir = os.path.abspath('.')
+        feature_path = sys.argv[-1]
 
         # setup start scripts
         # we assume that created container already have lettuce installed
-        script_path = self.inner_path_to_global('etc/rc.local')
+        script_path = self.lxc_abs_path('/etc/rc.local')
         with open(script_path, 'w') as fp:
             def _export_env_var(acc, keyvalue):
                 return "%sexport %s='%s'\n" % ((acc,) + keyvalue)
@@ -130,49 +128,88 @@ class LXCRunner(object):
                      'results_path': self.run_results_inner_path})
             os.chmod(script_path, 0755)
 
-        # TODO: restore world
-
-    # def save_env(self, filepath):
-    #     with open(filepath, 'w') as fp:
-    #         pickle.dump(os.environ, fp)
-
     def save_world(self, filepath):
         with open(filepath, 'w') as f:
             for var in dir(world):
                 if not var.startswith('_') and var not in ('absorb', 'spew'):
-                    pickle.dump(world.__getattribute__(var), f)
+                    pickle.dump((var, world.__getattribute__(var)), f)
+
+    def load_world(self, path):
+        with open(path, 'r') as f:
+            while True:
+                try:
+                    attr = pickle.load(f)
+                    world.__setattr__(attr[0], attr[1])
+                except EOFError:
+                    break
 
     def run_container(self):
-        lxc_command('start', '-d', '-n ' + self.container_name)
+        return_code = lxc_command('start',
+                                  '-d',
+                                  '-n ' + self.container_name)[2]
+        if return_code != 0:
+            raise BaseException('Container failed to start')
 
     def wait_container(self):
         """
-        Waits for run_results_inner_path.
-
-        This file can be created by lettuce, or run script if lettuce
-        fails while running.
+        Waits for run_results_inner_path with /proc/x poll.
         """
-        while not os.path.exists(self.inner_path_to_global(self.run_results_inner_path)):
+
+        while True:
+            ps_out = system('ps', 'auxf')[0]
+
+            match = re.search(r'-n %s.*' % self.container_name,
+                              ps_out,
+                              re.DOTALL)
+            if not match:
+                return
+
+            match = re.search(r'.*lettuce.*', match.group())
+            if match:
+                lxc_lettuce_pid = match.group().split()[1]
+                while os.path.exists('/proc/%s' % lxc_lettuce_pid):
+                    sleep(1)
+                return
             sleep(1)
 
     def get_run_results(self):
         """
         Reads file on run_results_inner_path.
+        Returns pair with string representation of step run result
+        and tuple of number failed, skipped and passed steps
         """
-        path = self.inner_path_to_global(self.run_results_inner_path)
+        path = self.lxc_abs_path(self.run_results_inner_path)
         with open(path, 'r') as fp:
             lettuce_out = fp.read()
-            # print 'lettuce out:\n %s' % lettuce_out
-            match = re.search(self.run_results_search_regex,
+            match = re.search(self.run_results_str_regex,
                               lettuce_out,
                               re.DOTALL)
             results = match.group()
             second_line_start = results.index('\n') + 1
-            return results[second_line_start:].strip()
+
+            run_result_str = results[second_line_start:].strip()
+
+            # statistics
+            match = re.search(self.run_results_stats_regex, lettuce_out)
+            stats = match.group()
+
+            def _get_steps_num(type_):
+                match = re.search(r'\d+ %s' % type_, stats)
+                if not match:
+                    return 0
+                match_str = match.group()
+                return int(match_str.split()[0])
+
+            failed_num = _get_steps_num('failed')
+            skipped_num = _get_steps_num('skipped')
+            passed_num = _get_steps_num('passed')
+
+            stats_tuple = (failed_num, skipped_num, passed_num)
+            return (run_result_str, stats_tuple)
 
     def shutdown_container(self):
-        lxc_command('stop', '-n ' + self.container_name)
-        # lxc_command('destroy', '-n ' + self.container_name)
+        # lxc_command('stop', '-n ' + self.container_name)
+        lxc_command('destroy', '-n ' + self.container_name)
 
     def display_results(self, results):
         # just print results... or use some output plugin
@@ -185,6 +222,12 @@ lxc_runner = LXCRunner()
 @before.each_scenario
 def handle_lxc_tag_setup(scenario):
     if LXC_RUNNER_TAG in scenario.tags:
+        # if world dump file is presented, lettuce is runned in LXC
+        # so we need to restore world
+        if os.path.exists(lxc_runner.world_file_inner_path):
+            lxc_runner.load_world(lxc_runner.world_file_inner_path)
+            return
+
         for step in scenario.steps:
             step.passed = True
             step.run = lambda *args, **kwargs: True
@@ -193,24 +236,17 @@ def handle_lxc_tag_setup(scenario):
         lxc_runner.saved_runall = core.Step.run_all
 
         def run_all_mock(*args, **kwargs):
-            lxc_runner.run_scenario(scenario)
+            failed, skipped, passed = lxc_runner.run_scenario(scenario)
             return (scenario.steps,  # all
-                    scenario.steps,  # passed
-                    [],              # failed
+                    scenario.steps[:passed],  # passed
+                    scenario.steps[passed:passed + failed],  # failed
                     [],              # undefined
                     [])              # reasons to fail
 
         core.Step.run_all = staticmethod(run_all_mock)
 
-        scenario.run = lambda ignore_case, failfast=False: \
-            core.ScenarioResult(scenario,
-                                scenario.steps,  # passed
-                                [],              # failed
-                                [],              # skipped
-                                [])              # undefined
-
 
 @after.each_scenario
 def handle_lxc_tag_teardown(scenario):
-    if LXC_RUNNER_TAG in scenario.tags and lxc_runner:
+    if LXC_RUNNER_TAG in scenario.tags and not os.path.exists(lxc_runner.world_file_inner_path):
         core.Step.run_all = staticmethod(lxc_runner.saved_runall)
