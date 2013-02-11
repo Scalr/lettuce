@@ -43,7 +43,8 @@ from lettuce.registry import CALLBACK_REGISTRY
 from lettuce.exceptions import StepLoadingError
 from lettuce.plugins import (
     xunit_output,
-    autopdb
+    autopdb,
+    lxc_isolator
 )
 from lettuce import fs
 from lettuce import exceptions
