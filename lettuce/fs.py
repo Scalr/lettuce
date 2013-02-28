@@ -29,11 +29,33 @@ from os.path import abspath, join, dirname, curdir, exists
 class FeatureLoader(object):
     """Loader class responsible for findind features and step
     definitions along a given path on filesystem"""
-    def __init__(self, base_dir):
+    def __init__(self, base_dir, files_to_load=None, excluded_files=None):
         self.base_dir = FileSystem.abspath(base_dir)
+
+        def _normalize_filenames(file_list):
+            return [r'^%s\.py$' % f.split('.')[0] for f in file_list]
+
+        # we can only have files_to_load or excluded_files, but not both
+        self.files_to_load = None
+        self.excluded_files = None
+        if files_to_load:
+            self.files_to_load = _normalize_filenames(files_to_load)
+        elif excluded_files:
+            self.excluded_files = _normalize_filenames(excluded_files)
 
     def find_and_load_step_definitions(self):
         files = FileSystem.locate(self.base_dir, '*.py')
+
+        def _matches_any(str_, pattern_list):
+            return any(map(lambda p: re.match(p, str_), pattern_list))
+
+        if self.files_to_load:
+            is_file_wanted = lambda f: _matches_any(f, self.files_to_load)
+            files = filter(is_file_wanted, files)
+        elif self.excluded_files:
+            is_file_wanted = lambda f: not _matches_any(f, self.excluded_files)
+            files = filter(is_file_wanted, files)
+
         for filename in files:
             root = FileSystem.dirname(filename)
             sys.path.insert(0, root)

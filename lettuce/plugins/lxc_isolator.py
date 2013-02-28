@@ -212,7 +212,7 @@ class LXCRunner(object):
         lxc_command('destroy', '-n ' + self.container_name)
 
     def display_results(self, results):
-        # just print results... or use some output plugin
+        '''Just print results because they are already formatted'''
         print results
 
 
