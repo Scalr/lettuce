@@ -78,6 +78,42 @@ def main(args=sys.argv[1:]):
                       action="store_true",
                       help='Launches an interactive debugger upon error')
 
+    parser.add_option("--plugins-dir",
+                      dest="plugins_dir",
+                      default=None,
+                      type="string",
+                      help='Sets plugins directory')
+
+    parser.add_option("--terrain-file",
+                      dest="terrain_file",
+                      default=None,
+                      type="string",
+                      help='Sets terrain file')
+
+    parser.add_option("--files-to-load",
+                      dest="files_to_load",
+                      default=None,
+                      type="string",
+                      help='Usage: \n'
+                      'lettuce some/dir --files-to-load file1[,file2[,file3...]]'
+                      '\n'
+                      'Defines list of .py files that needs to be loaded. '
+                      'You can use regular expressions for filenames. '
+                      'Use either this option or --excluded-files, '
+                      'but not them both.')
+
+    parser.add_option("--excluded-files",
+                      dest="excluded_files",
+                      default=None,
+                      type="string",
+                      help='Usage: \n'
+                      'lettuce some/dir --files-to-load file1[,file2[,file3...]]'
+                      '\n'
+                      'Defines list of .py files that should not be loaded. '
+                      'You can use regular expressions for filenames. '
+                      'Use either this option, or --files-to-load, '
+                      'but not them both.')
+
     options, args = parser.parse_args(args)
     if args:
         base_path = os.path.abspath(args[0])
@@ -91,6 +127,15 @@ def main(args=sys.argv[1:]):
     if options.tags:
         tags = [tag.strip('@') for tag in options.tags]
 
+    terrain_file = options.terrain_file or \
+        os.environ.get('LETTUCE_TERRAIN_FILE', 'terrain')
+    lettuce.import_terrain(terrain_file)
+
+    plugins_dir = options.plugins_dir or os.environ.get('LETTUCE_TERRAIN_FILE',
+                                                        None)
+    if plugins_dir:
+        lettuce.import_plugins(options.plugins_dir)
+
     runner = lettuce.Runner(
         base_path,
         scenarios=options.scenarios,
@@ -101,6 +146,8 @@ def main(args=sys.argv[1:]):
         failfast=options.failfast,
         auto_pdb=options.auto_pdb,
         tags=tags,
+        files_to_load=options.files_to_load,
+        excluded_files=options.files_to_load,
     )
 
     result = runner.run()

@@ -66,18 +66,37 @@ __all__ = [
     'call_hook',
 ]
 
-try:
-    terrain = fs.FileSystem._import("terrain")
-    reload(terrain)
-except Exception, e:
-    if not "No module named terrain" in str(e):
-        string = 'Lettuce has tried to load the conventional environment ' \
-            'module "terrain"\nbut it has errors, check its contents and ' \
-            'try to run lettuce again.\n\nOriginal traceback below:\n\n'
 
-        sys.stderr.write(string)
-        sys.stderr.write(exceptions.traceback.format_exc(e))
-        raise SystemExit(1)
+terrain = None
+
+
+def import_terrain(terrain_file="terrain"):
+    try:
+        global terrain
+        terrain = __import__(terrain_file)
+        # commented for possible restore
+        # terrain = fs.FileSystem._import(terrain_file)
+        # reload(terrain)
+    except Exception, e:
+        if not "No module named terrain" in str(e):
+            string = 'Lettuce has tried to load the conventional environment ' \
+                'module "terrain"\nbut it has errors, check its contents and ' \
+                'try to run lettuce again.\n\nOriginal traceback below:\n\n'
+
+            sys.stderr.write(string)
+            sys.stderr.write(exceptions.traceback.format_exc(e))
+            raise SystemExit(1)
+
+
+plugins = []
+
+
+def import_plugins(plugins_dir):
+    sys.path.insert(0, plugins_dir)
+    for filename in os.listdir(plugins_dir):
+        if not filename.startswith('_') and filename.endswith('.py'):
+            plugin = __import__(filename.split('.')[0])
+            plugins.append(plugin)
 
 
 class Runner(object):
@@ -88,7 +107,8 @@ class Runner(object):
     """
     def __init__(self, base_path, scenarios=None, verbosity=0, random=False,
                  enable_xunit=False, xunit_filename=None, tags=None,
-                 failfast=False, auto_pdb=False):
+                 failfast=False, auto_pdb=False, files_to_load=None,
+                 excluded_files=None):
         """ lettuce.Runner will try to find a terrain.py file and
         import it from within `base_path`
         """
@@ -101,7 +121,9 @@ class Runner(object):
             base_path = os.path.dirname(base_path)
 
         sys.path.insert(0, base_path)
-        self.loader = fs.FeatureLoader(base_path)
+        self.loader = fs.FeatureLoader(base_path,
+                                       files_to_load,
+                                       excluded_files)
         self.verbosity = verbosity
         self.scenarios = scenarios and map(int, scenarios.split(",")) or None
         self.failfast = failfast
