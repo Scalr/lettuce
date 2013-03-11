@@ -33,7 +33,7 @@ class FeatureLoader(object):
         self.base_dir = FileSystem.abspath(base_dir)
 
         def _normalize_filenames(file_list):
-            return [r'^%s\.py$' % f.split('.')[0] for f in file_list]
+            return [r'.*%s\.py$' % f.split('.')[0] for f in file_list]
 
         # we can only have files_to_load or excluded_files, but not both
         self.files_to_load = None
@@ -42,6 +42,8 @@ class FeatureLoader(object):
             self.files_to_load = _normalize_filenames(files_to_load)
         elif excluded_files:
             self.excluded_files = _normalize_filenames(excluded_files)
+
+        print 'normalized ftl: ', self.files_to_load
 
     def find_and_load_step_definitions(self):
         files = FileSystem.locate(self.base_dir, '*.py')

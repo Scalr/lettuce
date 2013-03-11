@@ -20,6 +20,27 @@ import sys
 import optparse
 
 import lettuce
+from fs import FeatureLoader
+from core import Language
+
+FILES_TO_LOAD_HEADER = 'Using step definitions from: '
+
+def find_files_to_load(path):
+  # TODO: Test this
+    loader = FeatureLoader(path)
+    feature_files = loader.find_feature_files()
+    result = []
+    for f in feature_files:
+        with open(f, 'r') as fp:
+            while True:
+                line = fp.readline()
+                if Language.feature in line:
+                    break
+                if FILES_TO_LOAD_HEADER in line:
+                    files_to_load_str = line[len(FILES_TO_LOAD_HEADER):]
+                    files = files_to_load_str.split(',')
+                    result.extend([name.strip() for name in files])
+    return result
 
 
 def main(args=sys.argv[1:]):
@@ -136,6 +157,12 @@ def main(args=sys.argv[1:]):
     if plugins_dir:
         lettuce.import_plugins(options.plugins_dir)
 
+    files_to_load = None
+    if not options.files_to_load and not options.files_to_load:
+        files_to_load = find_files_to_load(base_path)
+
+    # print '-----', files_to_load
+
     runner = lettuce.Runner(
         base_path,
         scenarios=options.scenarios,
@@ -146,8 +173,8 @@ def main(args=sys.argv[1:]):
         failfast=options.failfast,
         auto_pdb=options.auto_pdb,
         tags=tags,
-        files_to_load=options.files_to_load,
-        excluded_files=options.files_to_load,
+        files_to_load=options.files_to_load or files_to_load,
+        excluded_files=options.excluded_files,
     )
 
     result = runner.run()
