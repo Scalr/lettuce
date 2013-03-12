@@ -43,8 +43,6 @@ class FeatureLoader(object):
         elif excluded_files:
             self.excluded_files = _normalize_filenames(excluded_files)
 
-        print 'normalized ftl: ', self.files_to_load
-
     def find_and_load_step_definitions(self):
         files = FileSystem.locate(self.base_dir, '*.py')
 
