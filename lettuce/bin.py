@@ -25,8 +25,8 @@ from core import Language
 
 FILES_TO_LOAD_HEADER = 'Using step definitions from: '
 
+
 def find_files_to_load(path):
-  # TODO: Test this
     loader = FeatureLoader(path)
     feature_files = loader.find_feature_files()
     result = []
@@ -34,12 +34,16 @@ def find_files_to_load(path):
         with open(f, 'r') as fp:
             while True:
                 line = fp.readline()
-                if Language.feature in line:
+                if line == '':
                     break
-                if FILES_TO_LOAD_HEADER in line:
+                line = line.lstrip()
+                if line.startswith(Language.feature):
+                    break
+                if line.startswith(FILES_TO_LOAD_HEADER):
                     files_to_load_str = line[len(FILES_TO_LOAD_HEADER):]
                     files = files_to_load_str.split(',')
                     result.extend([name.strip() for name in files])
+                    break
     return result
 
 
