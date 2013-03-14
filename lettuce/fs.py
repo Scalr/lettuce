@@ -33,7 +33,7 @@ class FeatureLoader(object):
         self.base_dir = FileSystem.abspath(base_dir)
 
         def _normalize_filenames(file_list):
-            return [r'^%s\.py$' % f.split('.')[0] for f in file_list]
+            return [r'.*%s\.py$' % f.split('.')[0] for f in file_list]
 
         # we can only have files_to_load or excluded_files, but not both
         self.files_to_load = None
