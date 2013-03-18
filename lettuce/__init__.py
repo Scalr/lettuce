@@ -73,7 +73,11 @@ terrain = None
 def import_terrain(terrain_file="terrain"):
     try:
         global terrain
-        terrain = __import__(terrain_file)
+        filename = os.path.basename(terrain_file)
+        dirname = os.path.dirname(terrain_file)
+        sys.path.insert(0, dirname)
+        terrain = __import__(filename.split('.')[0])
+        sys.path.remove(dirname)
         # commented for possible restore
         # terrain = fs.FileSystem._import(terrain_file)
         # reload(terrain)
