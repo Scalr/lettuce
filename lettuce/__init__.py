@@ -56,6 +56,23 @@ except ImportError:
     pass
 
 
+# force flush calls so lettuce output could be read from pipe
+class _Stdout(object):
+
+    def __init__(self):
+        self._obj = sys.stdout
+
+    def __getattr__(self, attr):
+        return getattr(self._obj, attr)    
+    
+    def write(self, s):
+        # mb flush every X bytes?
+        self._obj.write(s)
+        self._obj.flush()
+        
+sys.stdout = _Stdout()
+
+
 __all__ = [
     'after',
     'before',
