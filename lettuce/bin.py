@@ -40,7 +40,6 @@ def find_files_to_load(path):
                 if line.startswith(Language.feature):
                     break
                 if line.startswith(FILES_TO_LOAD_HEADER):
-                    print 'HEADER FOUND'
                     files_to_load_str = line[len(FILES_TO_LOAD_HEADER):]
                     files = files_to_load_str.split(',')
                     result.extend([name.strip() for name in files])
