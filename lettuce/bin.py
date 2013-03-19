@@ -23,7 +23,7 @@ import lettuce
 from fs import FeatureLoader
 from core import Language
 
-FILES_TO_LOAD_HEADER = 'Using step definitions from: '
+FILES_TO_LOAD_HEADER = 'Using step definitions from:'
 
 
 def find_files_to_load(path):
@@ -40,6 +40,7 @@ def find_files_to_load(path):
                 if line.startswith(Language.feature):
                     break
                 if line.startswith(FILES_TO_LOAD_HEADER):
+                    print 'HEADER FOUND'
                     files_to_load_str = line[len(FILES_TO_LOAD_HEADER):]
                     files = files_to_load_str.split(',')
                     result.extend([name.strip() for name in files])
@@ -168,8 +169,14 @@ def main(args=sys.argv[1:]):
 
     # Find files to load that are defined in .feature file
     files_to_load = None
-    if not options.files_to_load and not options.files_to_load:
-        files_to_load = find_files_to_load(base_path)
+    excluded_files = None
+    
+    if options.files_to_load:
+        files_to_load = options.files_to_load.split(',')
+    elif options.excluded_files:
+        excluded_files = options.excluded_files.split(',')
+    else:
+        files_to_load = find_files_to_load(feature_dir)
 
     # Create and run lettuce runner instance
     runner = lettuce.Runner(
@@ -182,8 +189,8 @@ def main(args=sys.argv[1:]):
         failfast=options.failfast,
         auto_pdb=options.auto_pdb,
         tags=tags,
-        files_to_load=options.files_to_load or files_to_load,
-        excluded_files=options.excluded_files,
+        files_to_load=files_to_load,
+        excluded_files=excluded_files,
     )
 
     result = runner.run()
