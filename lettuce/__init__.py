@@ -15,7 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-version = '0.2.13'
+version = '0.2.14'
 release = 'kryptonite'
 
 import os
@@ -54,6 +54,23 @@ try:
     ms_windows_workaround()
 except ImportError:
     pass
+
+
+# force flush calls so lettuce output could be read from pipe
+class _Stdout(object):
+
+    def __init__(self):
+        self._obj = sys.stdout
+
+    def __getattr__(self, attr):
+        return getattr(self._obj, attr)    
+    
+    def write(self, s):
+        # mb flush every X bytes?
+        self._obj.write(s)
+        self._obj.flush()
+        
+sys.stdout = _Stdout()
 
 
 __all__ = [
@@ -207,12 +224,11 @@ class Runner(object):
             failed = True
 
         finally:
+            total = TotalResult(results)
+            call_hook('after', 'all', total)
+
             if failed:
                 raise SystemExit(2)
-
-            total = TotalResult(results)
-
-            call_hook('after', 'all', total)
 
             finished_at = datetime.now()
             time_took = finished_at - started_at
