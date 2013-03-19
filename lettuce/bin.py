@@ -152,21 +152,26 @@ def main(args=sys.argv[1:]):
     if options.tags:
         tags = [tag.strip('@') for tag in options.tags]
 
+    # Terrain file loading
+    feature_dir = base_path if not base_path.endswith('.feature') \
+        else os.path.dirname(base_path)
     terrain_file = options.terrain_file or \
-        os.environ.get('LETTUCE_TERRAIN_FILE', 'terrain')
+        os.environ.get('LETTUCE_TERRAIN_FILE',
+                       os.path.join(feature_dir, 'terrain'))
     lettuce.import_terrain(terrain_file)
 
+    # Plugins loading
     plugins_dir = options.plugins_dir or os.environ.get('LETTUCE_TERRAIN_FILE',
                                                         None)
     if plugins_dir:
         lettuce.import_plugins(options.plugins_dir)
 
+    # Find files to load that are defined in .feature file
     files_to_load = None
     if not options.files_to_load and not options.files_to_load:
         files_to_load = find_files_to_load(base_path)
 
-    # print '-----', files_to_load
-
+    # Create and run lettuce runner instance
     runner = lettuce.Runner(
         base_path,
         scenarios=options.scenarios,
