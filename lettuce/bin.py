@@ -27,8 +27,13 @@ FILES_TO_LOAD_HEADER = 'Using step definitions from:'
 
 
 def find_files_to_load(path):
-    loader = FeatureLoader(path)
-    feature_files = loader.find_feature_files()
+    feature_files = None
+    if path.endswith('.feature'):
+        feature_files = [path]
+    else:
+        loader = FeatureLoader(path)
+        feature_files = loader.find_feature_files()
+
     result = []
     for f in feature_files:
         with open(f, 'r') as fp:
@@ -36,14 +41,17 @@ def find_files_to_load(path):
                 line = fp.readline()
                 if line == '':
                     break
+
                 line = line.lstrip()
                 if line.startswith(Language.feature):
                     break
+
                 if line.startswith(FILES_TO_LOAD_HEADER):
                     files_to_load_str = line[len(FILES_TO_LOAD_HEADER):]
                     files = files_to_load_str.split(',')
                     result.extend([name.strip() for name in files])
                     break
+
     return result
 
 
@@ -169,13 +177,13 @@ def main(args=sys.argv[1:]):
     # Find files to load that are defined in .feature file
     files_to_load = None
     excluded_files = None
-    
+
     if options.files_to_load:
         files_to_load = options.files_to_load.split(',')
     elif options.excluded_files:
         excluded_files = options.excluded_files.split(',')
     else:
-        files_to_load = find_files_to_load(feature_dir)
+        files_to_load = find_files_to_load(base_path)
 
     # Create and run lettuce runner instance
     runner = lettuce.Runner(
