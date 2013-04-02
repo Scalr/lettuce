@@ -463,7 +463,12 @@ class Step(object):
                 steps_failed.append(step)
                 reasons_to_fail.append(step.why)
                 if failfast:
-                    raise
+                    # raise
+                    return (all_steps,
+                            steps_passed,
+                            steps_failed,
+                            steps_undefined,
+                            reasons_to_fail)
 
             finally:
                 all_steps.append(step)
@@ -1213,7 +1218,11 @@ class Feature(object):
                 if self.background:
                     self.background.run(ignore_case)
 
-                scenarios_ran.extend(scenario.run(ignore_case, failfast=failfast))
+                scenario_run_results = scenario.run(ignore_case, failfast=failfast)
+                scenarios_ran.extend(scenario_run_results)
+                any_outline_failed = any(s.steps_failed for s in scenario_run_results)
+                if failfast and any_outline_failed:
+                    break
         except:
             if failfast:
                 call_hook('after_each', 'feature', self)
