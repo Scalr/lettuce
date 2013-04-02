@@ -460,10 +460,10 @@ class Step(object):
                 steps_undefined.append(e.step)
 
             except Exception, e:
-                if failfast:
-                    raise
                 steps_failed.append(step)
                 reasons_to_fail.append(step.why)
+                if failfast:
+                    raise
 
             finally:
                 all_steps.append(step)
