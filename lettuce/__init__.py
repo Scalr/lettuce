@@ -238,10 +238,12 @@ class Runner(object):
             minutes = time_took.seconds / 60
             seconds = time_took.seconds
             if hours:
-                print  "(finished within %d hours)" % hours
+                print "(finished within %d hours, %d minutes, %d seconds)" % \
+                    (hours, minutes, seconds)
             elif minutes:
-                print  "(finished within %d minutes)" % minutes
+                print "(finished within %d minutes, %d seconds)" % \
+                    (minutes, seconds)
             elif seconds:
-                print  "(finished within %d seconds)" % seconds
+                print "(finished within %d seconds)" % seconds
 
             return total
