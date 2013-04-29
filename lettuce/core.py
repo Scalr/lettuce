@@ -635,9 +635,14 @@ class Scenario(object):
         matched = []
 
         if isinstance(self.tags, list):
-            for tag in self.tags:
-                if tag in tags:
-                    return True
+            match = False
+            for tag in tags:
+                if tag.startswith('-') and tag[1:] in self.tags:
+                    return False
+                if tag in self.tags:
+                    match = True
+            if match:
+                return True
         else:
             self.tags = []
 
