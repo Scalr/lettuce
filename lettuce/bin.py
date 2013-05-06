@@ -166,6 +166,8 @@ def main(args=sys.argv[1:]):
     terrain_file = options.terrain_file or \
         os.environ.get('LETTUCE_TERRAIN_FILE',
                        os.path.join(feature_dir, 'terrain'))
+    if not os.path.exists(terrain_file + '.py'):
+        terrain_file = 'terrain'
     lettuce.import_terrain(terrain_file)
 
     # Plugins loading
