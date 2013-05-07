@@ -239,10 +239,10 @@ class Runner(object):
             seconds = time_took.seconds
             if hours:
                 print "(finished within %d hours, %d minutes, %d seconds)" % \
-                    (hours, minutes, seconds)
+                    (hours, minutes % 60, seconds % 60)
             elif minutes:
                 print "(finished within %d minutes, %d seconds)" % \
-                    (minutes, seconds)
+                    (minutes, seconds % 60)
             elif seconds:
                 print "(finished within %d seconds)" % seconds
 
