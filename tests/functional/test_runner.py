@@ -334,7 +334,7 @@ def test_output_with_success_colorful_many_features():
 def test_output_when_could_not_find_features():
     "Testing the colorful output of many successful features"
 
-    path = fs.relpath(join(abspath(dirname(__file__)), 'unexistent-folder'))
+    path = fs.relpath(join(abspath(dirname(__file__)), 'no_features', 'unexistent-folder'))
     runner = Runner(path, verbosity=4)
     runner.run()
 
@@ -348,7 +348,7 @@ def test_output_when_could_not_find_features():
 def test_output_when_could_not_find_features_colorless():
     "Testing the colorful output of many successful features colorless"
 
-    path = fs.relpath(join(abspath(dirname(__file__)), 'unexistent-folder'))
+    path = fs.relpath(join(abspath(dirname(__file__)), 'no_features', 'unexistent-folder'))
     runner = Runner(path, verbosity=3)
     runner.run()
 
@@ -362,7 +362,7 @@ def test_output_when_could_not_find_features_colorless():
 def test_output_when_could_not_find_features_verbosity_level_2():
     "Testing the colorful output of many successful features colorless"
 
-    path = fs.relpath(join(abspath(dirname(__file__)), 'unexistent-folder'))
+    path = fs.relpath(join(abspath(dirname(__file__)), 'no_features', 'unexistent-folder'))
     runner = Runner(path, verbosity=2)
     runner.run()
 
@@ -1115,7 +1115,9 @@ def test_run_only_fast_tests():
 def test_run_random():
     "Randomise the feature order"
 
-    runner = Runner('some_basepath', random=True)
+    path = fs.relpath(join(abspath(dirname(__file__)), 'no_features', 'unexistent-folder'))
+
+    runner = Runner(path, random=True)
     assert_equals(True, runner.random)
     with patch.object(random, 'shuffle') as pshuffle:
         runner.run()
@@ -1235,10 +1237,10 @@ def test_output_background_with_success_colorless():
         '  I want to automate its test                 # tests/functional/bg_features/simple/simple.feature:4\n'
         '\n'
         '  Background:\n'
-        '    Given the variable "X" holds 2            # tests/functional/test_runner.py:1221\n'
+        '    Given the variable "X" holds 2            # tests/functional/test_runner.py:1223\n'
         '\n'
         '  Scenario: multiplication changing the value # tests/functional/bg_features/simple/simple.feature:9\n'
-        '    Given the variable "X" is equal to 2      # tests/functional/test_runner.py:1221\n'
+        '    Given the variable "X" is equal to 2      # tests/functional/test_runner.py:1223\n'
         '\n'
         '1 feature (1 passed)\n'
         '1 scenario (1 passed)\n'
@@ -1270,12 +1272,12 @@ def test_output_background_with_success_colorful():
         '\033[1;37m  I want to automate its test                 \033[1;30m# tests/functional/bg_features/simple/simple.feature:4\033[0m\n'
         '\n'
         '\033[1;37m  Background:\033[0m\n'
-        '\033[1;30m    Given the variable "X" holds 2            \033[1;30m# tests/functional/test_runner.py:1256\033[0m\n'
-        '\033[A\033[1;32m    Given the variable "X" holds 2            \033[1;30m# tests/functional/test_runner.py:1256\033[0m\n'
+        '\033[1;30m    Given the variable "X" holds 2            \033[1;30m# tests/functional/test_runner.py:1258\033[0m\n'
+        '\033[A\033[1;32m    Given the variable "X" holds 2            \033[1;30m# tests/functional/test_runner.py:1258\033[0m\n'
         '\n'
         '\033[1;37m  Scenario: multiplication changing the value \033[1;30m# tests/functional/bg_features/simple/simple.feature:9\033[0m\n'
-        '\033[1;30m    Given the variable "X" is equal to 2      \033[1;30m# tests/functional/test_runner.py:1256\033[0m\n'
-        '\033[A\033[1;32m    Given the variable "X" is equal to 2      \033[1;30m# tests/functional/test_runner.py:1256\033[0m\n'
+        '\033[1;30m    Given the variable "X" is equal to 2      \033[1;30m# tests/functional/test_runner.py:1258\033[0m\n'
+        '\033[A\033[1;32m    Given the variable "X" is equal to 2      \033[1;30m# tests/functional/test_runner.py:1258\033[0m\n'
         '\n'
         '\033[1;37m1 feature (\033[1;32m1 passed\033[1;37m)\033[0m\n'
         '\033[1;37m1 scenario (\033[1;32m1 passed\033[1;37m)\033[0m\n'
@@ -1365,3 +1367,44 @@ def test_feature_missing_scenarios():
         "Features must have scenarios.\nPlease refer to the documentation "
         "available at http://lettuce.it for more information.\n" % filename
     )
+
+@with_setup(prepare_stdout)
+def test_output_with_undefined_steps_colorful():
+    "With colored output, an undefined step should be printed in sequence."
+
+    runner = Runner(feature_name('undefined_steps'), verbosity=4)
+    runner.run()
+
+    assert_stdout_lines_with_traceback(
+        '\n'
+        '\x1b[1;37mFeature: Test undefined steps are displayed on console           \x1b[1;30m# tests/functional/output_features/undefined_steps/undefined_steps.feature:1\x1b[0m\n'
+        '\n'
+        '\x1b[1;37m  Scenario: Scenario with undefined step                         \x1b[1;30m# tests/functional/output_features/undefined_steps/undefined_steps.feature:3\x1b[0m\n'
+        '\x1b[1;30m    Given this test step passes                                  \x1b[1;30m# tests/functional/output_features/undefined_steps/undefined_steps.py:4\x1b[0m\n'
+        '\x1b[A\x1b[1;32m    Given this test step passes                                  \x1b[1;30m# tests/functional/output_features/undefined_steps/undefined_steps.py:4\x1b[0m\n'
+        '\x1b[0;33m    When this test step is undefined                             \x1b[1;30m# tests/functional/output_features/undefined_steps/undefined_steps.feature:5\x1b[0m\n'
+        '\n'
+        '\x1b[1;37m  Scenario Outline: Outline scenario with general undefined step \x1b[1;30m# tests/functional/output_features/undefined_steps/undefined_steps.feature:7\x1b[0m\n'
+        '\x1b[0;36m    Given this test step passes                                  \x1b[1;30m# tests/functional/output_features/undefined_steps/undefined_steps.py:4\x1b[0m\n'
+        '\x1b[0;33m    When this test step is undefined                             \x1b[1;30m# tests/functional/output_features/undefined_steps/undefined_steps.feature:5\x1b[0m\n'
+        '\x1b[0;36m    Then <in> squared is <out>                                   \x1b[1;30m# tests/functional/output_features/undefined_steps/undefined_steps.py:8\x1b[0m\n'
+        '\n'
+        '\x1b[1;37m  Examples:\x1b[0m\n'
+        '\x1b[0;36m   \x1b[1;37m |\x1b[0;36m in\x1b[1;37m |\x1b[0;36m out\x1b[1;37m |\x1b[0;36m\x1b[0m\n'
+        '\x1b[1;32m   \x1b[1;37m |\x1b[1;32m 1 \x1b[1;37m |\x1b[1;32m 1  \x1b[1;37m |\x1b[1;32m\x1b[0m\n'
+        '\x1b[1;32m   \x1b[1;37m |\x1b[1;32m 2 \x1b[1;37m |\x1b[1;32m 4  \x1b[1;37m |\x1b[1;32m\x1b[0m\n'
+        '\n'
+        '\x1b[1;37m1 feature (\x1b[0;31m0 passed\x1b[1;37m)\x1b[0m\n'
+        '\x1b[1;37m3 scenarios (\x1b[0;31m0 passed\x1b[1;37m)\x1b[0m\n'
+        '\x1b[1;37m8 steps (\x1b[0;36m2 skipped\x1b[1;37m, \x1b[0;33m3 undefined\x1b[1;37m, \x1b[1;32m3 passed\x1b[1;37m)\x1b[0m\n'
+        '\n'
+        '\x1b[0;33mYou can implement step definitions for undefined steps with these snippets:\n'
+        '\n'
+        '# -*- coding: utf-8 -*-\n'
+        'from lettuce import step\n'
+        '\n'
+        "@step(u'When this test step is undefined')\n"
+        'def when_this_test_step_is_undefined(step):\n'
+        "    assert False, 'This step must be implemented'\x1b[0m\n"
+    )
+    

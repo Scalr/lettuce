@@ -50,7 +50,8 @@ class Command(BaseCommand):
         make_option('-S', '--no-server', action='store_true', dest='no_server', default=False,
             help="will not run django's builtin HTTP server"),
 
-        make_option('-T', '--test-server', action='store_true', dest='test_database', default=False,
+        make_option('-T', '--test-server', action='store_true', dest='test_database',
+            default=getattr(settings, "LETTUCE_USE_TEST_DATABASE", False),
             help="will run django's builtin HTTP server using the test databases"),
 
         make_option('-P', '--port', type='int', dest='port',
@@ -104,8 +105,6 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         setup_test_environment()
 
-        settings.DEBUG = options.get('debug', False)
-
         verbosity = int(options.get('verbosity', 4))
         apps_to_run = tuple(options.get('apps', '').split(","))
         apps_to_avoid = tuple(options.get('avoid_apps', '').split(","))
@@ -124,8 +123,8 @@ class Command(BaseCommand):
                 migrate_south = False
                 pass
 
-            from django.test.simple import DjangoTestSuiteRunner
-            self._testrunner = DjangoTestSuiteRunner()
+            from django.test.utils import get_runner
+            self._testrunner = get_runner(settings)(interactive=False)
             self._testrunner.setup_test_environment()
             self._old_db_config = self._testrunner.setup_databases()
 
@@ -133,6 +132,7 @@ class Command(BaseCommand):
             if migrate_south:
                call_command('migrate', verbosity=0, interactive=False,)
 
+        settings.DEBUG = options.get('debug', False)
 
         server = Server(port=options['port'])
 
@@ -143,7 +143,7 @@ class Command(BaseCommand):
             except LettuceServerException, e:
                 raise SystemExit(e)
 
-        os.environ['SERVER_NAME'] = server.address
+        os.environ['SERVER_NAME'] = str(server.address)
         os.environ['SERVER_PORT'] = str(server.port)
 
         failed = False
