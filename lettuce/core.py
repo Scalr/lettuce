@@ -336,11 +336,12 @@ class Step(object):
         keys, hashes = strings.parse_hashes(lines)
         return keys, hashes, multiline
 
-    def _get_match(self, ignore_case):
+    def _get_match(self, ignore_case, custom_sentence=None):
         matched, func = None, lambda: None
 
+        sentence = custom_sentence or self.sentence
         for regex, func in STEP_REGISTRY.items():
-            matched = re.search(regex, self.sentence, ignore_case and re.I or 0)
+            matched = re.search(regex, sentence, ignore_case and re.I or 0)
             if matched:
                 break
 
